@@ -1,10 +1,19 @@
 const Todo = require('../models/todoSchema');
 
-// Get all todos
 const getAllTodos = async (req, res) => {
     try {
-        const todos = await Todo.find({});
-        res.json(todos);
+        const { query } = req.query;
+        const filter = {
+            user: req.userId
+        }
+        if (query) {
+            filter.todo = {
+                $regex: query,
+                $options: 'i'
+            }
+        }
+        const todoRecords = await Todo.find(filter);
+        res.json(todoRecords);
     }
     catch (err) {
         console.log(err);
@@ -12,15 +21,32 @@ const getAllTodos = async (req, res) => {
     }
 };
 
-// Create a new todo
+const getAllTodosAdmin = async (req, res) => {
+    try {
+        const { query } = req.query;
+        const filter = {}
+        if (query) {
+            filter.todo = {
+                $regex: query,
+                $options: 'i'
+            }
+        }
+        const todoRecords = await Todo.find(filter).populate('user', 'username _id');
+        res.json(todoRecords);
+    }
+    catch (err) {
+        console.log(err);
+        res.status(500).send(err);
+    }
+}
+
 const createTodo = async (req, res) => {
     try {
-        const todo = new Todo({
-            todo: req.body.todo,
-            done: false
+        const params = { ...req.body, ...req.params, user: req.userId }
+        const todoRecord = await Todo.create({
+            ...params
         });
-        const savedTodo = await todo.save();
-        res.json(savedTodo);
+        res.json(todoRecord);
     }
     catch (err) {
         console.log(err);
@@ -28,11 +54,17 @@ const createTodo = async (req, res) => {
     }
 }
 
-// Update a todo by ID
 const updateTodo = async (req, res) => {
     try {
-        const updatedTodo = await Todo.findByIdAndUpdate(req.params.id, req.body, {new: true});
-        res.json(updatedTodo);
+        const params = { ...req.params, userId: req.userId };
+        const filter = {
+            ...params
+        }
+        const todoRecord = await Todo.findOneAndUpdate(filter, { new: true });
+        if (!todoRecord) {
+            return res.status(404).json({ message: 'Todo not found' });
+        }
+        res.json(updatedTodoRecord);
     }
     catch (err) {
         console.log(err);
@@ -40,11 +72,19 @@ const updateTodo = async (req, res) => {
     }
 }
 
-// Delete a todo by ID
 const deleteTodo = async (req, res) => {
     try {
-        const deletedTodo = await Todo.findByIdAndDelete(req.params.id);
-        res.json(deletedTodo);
+        const params = { ...req.params, user: req.userId.toString() }
+        const filter = {
+            ...params,
+           _id: params.id,
+        }
+        console.log(filter);
+        const todoRecord = await Todo.findOneAndDelete(filter);
+        if (!todoRecord) {
+            return res.status(404).json({ message: 'Todo not found' });
+        }
+        res.json(todoRecord);
     }
     catch (err) {
         console.log(err);
@@ -56,5 +96,6 @@ module.exports = {
     getAllTodos,
     createTodo,
     updateTodo,
-    deleteTodo
+    deleteTodo,
+    getAllTodosAdmin,
 };

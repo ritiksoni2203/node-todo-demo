@@ -9,8 +9,13 @@ mongoose.connect("mongodb://localhost:27017/todo", {
 });
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+// Routes
 const todosRouter = require('./routes/todos');
+const authRouter = require('./routes/auth');
+
+app.use('/auth', authRouter);
 app.use('/todos', todosRouter);
 
 app.listen(port, () => {
